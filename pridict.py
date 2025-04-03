@@ -4,7 +4,7 @@ import random
 import time
 import pytz
 from datetime import datetime, timedelta
-from flask import Flask
+from threading import Thread
 
 # Configuration from environment variables
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -21,9 +21,6 @@ if not BOT_TOKEN:
 
 # Initialize bot
 bot = telebot.TeleBot(BOT_TOKEN)
-
-# Initialize Flask app
-app = Flask(__name__)
 
 # Store cooldown timers
 cooldowns = {}
@@ -61,11 +58,6 @@ def get_prediction_button():
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton("🎯 Get Prediction", callback_data="get_prediction"))
     return markup
-
-@app.route('/')
-def health_check():
-    """Simple health check endpoint."""
-    return "🤖 Telegram Prediction Bot is Running", 200
 
 @bot.message_handler(commands=["start", "help"])
 def send_welcome(message):
@@ -113,7 +105,7 @@ def handle_prediction(call):
             user_id,
             f"📊 *Prediction*\n\n"
             f"⏳ Time: {future_time}\n"
-            f"📈 Cofficient: {round(pred + 0.10, 2)}x\n"
+            f"📈 Coefficient: {round(pred + 0.10, 2)}x\n"
             f"🛡 Safe: {safe}x",
             parse_mode="Markdown"
         )
@@ -124,18 +116,33 @@ def handle_prediction(call):
         print(f"Prediction error: {e}")
         bot.answer_callback_query(call.id, "⚠️ Try again later")
 
-def run_bot():
-    """Run the Telegram bot."""
-    print("🚀 Bot running in IST timezone...")
-    try:
-        bot.infinity_polling()
-    except Exception as e:
-        print(f"Bot crashed: {e}")
+def run_flask_app():
+    """Run a simple Flask server for health checks."""
+    from flask import Flask
+    app = Flask(__name__)
+    
+    @app.route('/')
+    def health_check():
+        return "🤖 Telegram Prediction Bot is Running", 200
+    
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
 
 if __name__ == '__main__':
-    # Start bot in a separate thread
-    from threading import Thread
-    Thread(target=run_bot).start()
+    print("🚀 Starting Telegram Prediction Bot...")
     
-    # Run Flask app on port 10000
-    app.run(host='0.0.0.0', port=10000)
+    # Start Flask in a separate thread if running on Render
+    if os.environ.get('RENDER'):
+        flask_thread = Thread(target=run_flask_app)
+        flask_thread.daemon = True
+        flask_thread.start()
+    
+    # Run the bot with error handling
+    while True:
+        try:
+            print("🤖 Bot starting polling...")
+            bot.infinity_polling()
+        except Exception as e:
+            print(f"⚠️ Bot crashed: {e}")
+            print("🔄 Restarting in 5 seconds...")
+            time.sleep(5)
