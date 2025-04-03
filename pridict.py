@@ -103,9 +103,8 @@ def handle_prediction(call):
         bot.send_message(
             user_id,
             f"📊 *Prediction*\n\n"
-            f"🕒 Current: {current_time}\n"
-            f"⏳ Future: {future_time}\n"
-            f"📈 Multiplier: {round(pred + 0.10, 2)}x\n"
+            f"⏳ Time: {future_time}\n"
+            f"📈 Cofficient: {round(pred + 0.10, 2)}x\n"
             f"🛡 Safe: {safe}x",
             parse_mode="Markdown"
         )
