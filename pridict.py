@@ -2,6 +2,8 @@ import telebot
 import random
 import time
 import threading
+from datetime import datetime, timedelta
+import pytz
 
 # Replace with your bot token
 BOT_TOKEN = "7870128724:AAF0zniFAw9RSuqFSofv5GEPk-5GEtRlRhw"
@@ -21,15 +23,22 @@ def is_member(user_id):
     except Exception as e:
         return False  # Assume not a member if an error occurs
 
-# Function to generate a prediction
+# Function to generate a prediction with IST time
 def generate_prediction():
     prediction_multiplier = round(random.uniform(1.30, 2.40), 2)
     safe_multiplier = round(random.uniform(1.30, prediction_multiplier), 2)
     
-    # Calculate future prediction time (current time + 130 seconds)
-    future_time = time.strftime("%I:%M:%S %p", time.localtime(time.time() + 130))
+    # Get current time in IST
+    ist = pytz.timezone('Asia/Kolkata')
+    current_time = datetime.now(ist)
     
-    return future_time, prediction_multiplier, safe_multiplier
+    # Calculate future prediction time (current time + 130 seconds)
+    future_time = current_time + timedelta(seconds=130)
+    
+    # Format time as HH:MM:SS AM/PM
+    formatted_time = future_time.strftime("%I:%M:%S %p")
+    
+    return formatted_time, prediction_multiplier, safe_multiplier
 
 # Start Command
 @bot.message_handler(commands=["start"])
@@ -82,7 +91,7 @@ def handle_prediction_request(call):
     bot.send_message(
         user_id,
         f"📊 *Prediction*\n"
-        f"🕒 *Time:* {future_time}\n"
+        f"🕒 *Time (IST):* {future_time}\n"
         f"📈 *Coefficient:* {round(prediction_multiplier + 0.10, 2)}\n"
         f"🛡 *Safe:* {safe_multiplier}",
         parse_mode="Markdown"
@@ -91,15 +100,5 @@ def handle_prediction_request(call):
     # Set cooldown for 2 minutes (120 seconds)
     cooldowns[user_id] = time.time() + 120
 
-    # Start countdown thread
-    
-
-# Countdown function to inform the user when they can request again
-
 # Start the bot
 bot.polling(none_stop=True)
-
-
-
-
-
