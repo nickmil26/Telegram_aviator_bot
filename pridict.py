@@ -26,6 +26,7 @@ ROCKET = "🚀"
 CHECK = "✅"
 CROSS = "❌"
 LOCK = "🔒"
+DIAMOND = "◆"
 
 # ================ UTILITY FUNCTIONS ================
 def is_port_in_use(port):
@@ -37,7 +38,7 @@ def get_indian_time():
     return datetime.now(INDIAN_TIMEZONE)
 
 def format_time(dt):
-    return dt.strftime("%I:%M %p")
+    return dt.strftime("%H:%M")
 
 def is_member(user_id):
     """Check channel membership"""
@@ -56,8 +57,8 @@ cooldowns = {}
 
 # ============== PREDICTION ENGINE ==============
 def generate_prediction():
-    pred = round(random.uniform(1.30, 2.40), 2)
-    safe = round(random.uniform(1.30, min(pred, 2.0)), 2)
+    pred = round(random.uniform(2.50, 4.50), 2)  # Higher range for Lucky Jet
+    safe = round(random.uniform(1.50, min(pred, 3.0)), 2)
     future_time = get_indian_time() + timedelta(seconds=PREDICTION_DELAY)
     return format_time(future_time), pred, safe
 
@@ -70,16 +71,20 @@ def send_welcome(message):
         
         if is_member(user_id):
             welcome_msg = (
-                f"{INDIAN_FLAG} *Sureshot Predictions*\n\n"
-                f"{CHECK} *VIP Access Granted*\n"
-                f"{CLOCK} Current IST: {current_time}\n\n"
-                "_Get accurate predictions with high winning probability_"
+                f"{ROCKET} *LUCKY JET PREDICTIONS*\n"
+                "┏━━━━━━━━━━━━━\n"
+                f"┠ {DIAMOND} {INDIAN_FLAG} TIME : {current_time}\n"
+                f"┠\n"
+                f"┠ {DIAMOND} 𝐂𝐎𝐄𝐅𝐅𝐈𝐂𝐈𝐄𝐍𝐓 : Loading... {ROCKET}\n"
+                f"┠\n"
+                f"┠ {DIAMOND} 𝐀𝐒𝐒𝐔𝐑𝐄𝐍𝐂𝐄 : Loading...\n"
+                "┗━━━━━━━━━━━━━"
             )
             
             markup = telebot.types.InlineKeyboardMarkup()
             markup.add(
                 telebot.types.InlineKeyboardButton(
-                    f"{ROCKET} GET PREDICTION {ROCKET}", 
+                    f"{ROCKET} GENERATE PREDICTION {ROCKET}", 
                     callback_data="get_prediction"
                 )
             )
@@ -106,7 +111,7 @@ def send_welcome(message):
             bot.send_message(
                 user_id,
                 f"{CROSS} *Access Denied*\n\n"
-                f"Join our VIP channel to get premium predictions:\n"
+                f"Join our VIP channel to get premium Lucky Jet predictions:\n"
                 f"👉 @{CHANNEL_USERNAME}\n\n"
                 "_After joining, click 'Check Membership' below_",
                 reply_markup=markup,
@@ -120,7 +125,7 @@ def check_membership(call):
     try:
         user_id = call.message.chat.id
         if is_member(user_id):
-            bot.answer_callback_query(call.id, "✅ Membership verified! Click below to get predictions")
+            bot.answer_callback_query(call.id, "✅ Membership verified! You can now get predictions")
             send_welcome(call.message)
         else:
             bot.answer_callback_query(call.id, "❌ You haven't joined the channel yet!", show_alert=True)
@@ -131,7 +136,6 @@ def check_membership(call):
 def handle_prediction(call):
     try:
         user_id = call.message.chat.id
-        current_time = get_indian_time()
         
         if not is_member(user_id):
             bot.answer_callback_query(call.id, "❌ Join channel first!", show_alert=True)
@@ -148,30 +152,32 @@ def handle_prediction(call):
 
         future_time, pred, safe = generate_prediction()
         
-        # Format prediction message professionally
+        # Format prediction message exactly as requested
         prediction_msg = (
-            f"{INDIAN_FLAG} *Premium Prediction*\n\n"
-            f"{CLOCK} *Bet Time:* {future_time} IST\n"
-            f"{CHART} *Coefficient:* {round(pred+0.1,2)}x\n"
-            f"{SHIELD} *Safe Cashout:* {safe}x\n"
-            f"{MONEY} *Potential Profit:* {round((pred+0.1)*10,2)}%\n\n"
-            "_Place bet 2 minutes before the specified time_"
+            f"{ROCKET} *LUCKY JET PREDICTIONS*\n"
+            "┏━━━━━━━━━━━━━\n"
+            f"┠ {DIAMOND} {INDIAN_FLAG} TIME : {future_time}\n"
+            f"┠\n"
+            f"┠ {DIAMOND} 𝐂𝐎𝐄𝐅𝐅𝐈𝐂𝐈𝐄𝐍𝐓 : {pred}X {ROCKET}\n"
+            f"┠\n"
+            f"┠ {DIAMOND} 𝐀𝐒𝐒𝐔𝐑𝐄𝐍𝐂𝐄 : {safe}X\n"
+            "┗━━━━━━━━━━━━━"
         )
         
-        # Create markup for new message
-        markup = telebot.types.InlineKeyboardMarkup()
-        markup.add(
-            telebot.types.InlineKeyboardButton(
-                f"{ROCKET} GET NEW PREDICTION {ROCKET}", 
-                callback_data="get_prediction"
+        # First remove the buttons from the original message
+        try:
+            bot.edit_message_reply_markup(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                reply_markup=None
             )
-        )
+        except Exception as e:
+            print(f"Error removing buttons: {e}")
         
-        # Send the prediction with button
+        # Send the new prediction
         bot.send_message(
             user_id,
             prediction_msg,
-            reply_markup=markup,
             parse_mode="Markdown"
         )
         
