@@ -1,2 +1,2 @@
 pyTelegramBotAPI
-pip install pytz
+install pytz
