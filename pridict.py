@@ -18,7 +18,7 @@ INDIAN_TIMEZONE = pytz.timezone('Asia/Kolkata')
 
 # ================ UTILITY FUNCTIONS ================
 def is_port_in_use(port):
-    """Check if a port is already in use"""
+    """Check if port is available"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
@@ -28,13 +28,22 @@ def get_indian_time():
 def format_time(dt):
     return dt.strftime("%I:%M:%S %p")
 
+def is_member(user_id):
+    """Check channel membership"""
+    try:
+        member = bot.get_chat_member(f"@{CHANNEL_USERNAME}", user_id)
+        return member.status in ["member", "administrator", "creator"]
+    except Exception as e:
+        print(f"Membership error: {e}")
+        return False
+
 # ============== BOT INITIALIZATION ==============
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 bot_lock = Lock()
 cooldowns = {}
 
-# ============== PREDICTION FUNCTIONS ==============
+# ============== PREDICTION ENGINE ==============
 def generate_prediction():
     pred = round(random.uniform(1.30, 2.40), 2)
     safe = round(random.uniform(1.30, min(pred, 2.0)), 2)
@@ -91,6 +100,14 @@ def handle_prediction(call):
 def health_check():
     return "🤖 Bot Operational", 200
 
+@app.route('/ping')
+def ping():
+    return {
+        "status": "ok",
+        "time": format_time(get_indian_time()),
+        "users_in_cooldown": len(cooldowns)
+    }
+
 def run_flask():
     """Run Flask web server"""
     if not is_port_in_use(PORT):
@@ -103,10 +120,10 @@ def run_bot():
     while True:
         try:
             with bot_lock:
+                # REMOVED restart_on_change TO AVOID WATCHDOG DEPENDENCY
                 bot.infinity_polling(
                     long_polling_timeout=30,
-                    timeout=20,
-                    restart_on_change=True
+                    timeout=20
                 )
         except Exception as e:
             print(f"🛑 Bot crash: {e}")
