@@ -3,7 +3,6 @@ import telebot
 import random
 import time
 import pytz
-import redis
 import socket
 from datetime import datetime, timedelta
 from threading import Thread, Lock
@@ -12,7 +11,6 @@ from flask import Flask
 # ================= CONFIGURATION =================
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 CHANNEL_USERNAME = os.environ.get('CHANNEL_USERNAME', 'testsub01')
-REDIS_URL = os.environ.get('REDIS_URL')  # From Upstash/Railway
 COOLDOWN_SECONDS = 120
 PREDICTION_DELAY = 130
 PORT = int(os.environ.get('PORT', 10000))
@@ -20,7 +18,7 @@ INDIAN_TIMEZONE = pytz.timezone('Asia/Kolkata')
 
 # ================ UTILITY FUNCTIONS ================
 def is_port_in_use(port):
-    """Check if port is available"""
+    """Check if a port is already in use"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
@@ -30,45 +28,11 @@ def get_indian_time():
 def format_time(dt):
     return dt.strftime("%I:%M:%S %p")
 
-# ============== REDIS INITIALIZATION ==============
-def init_redis():
-    try:
-        if REDIS_URL:
-            r = redis.from_url(REDIS_URL, socket_timeout=3)
-            r.ping()
-            print("✅ Redis connected")
-            return r
-    except Exception as e:
-        print(f"⚠️ Redis failed: {e}")
-    return None
-
-r = init_redis()
-cooldowns = {}  # Fallback storage
-
-# ============== COOLDOWN MANAGEMENT ==============
-def get_cooldown(user_id):
-    if r:
-        try:
-            remaining = r.ttl(f'cooldown:{user_id}')
-            return remaining if remaining > 0 else 0
-        except redis.RedisError:
-            pass
-    return max(cooldowns.get(user_id, 0) - time.time(), 0)
-
-def set_cooldown(user_id):
-    expiry = int(time.time()) + COOLDOWN_SECONDS
-    if r:
-        try:
-            r.setex(f'cooldown:{user_id}', COOLDOWN_SECONDS, '1')
-            return
-        except redis.RedisError:
-            pass
-    cooldowns[user_id] = expiry
-
 # ============== BOT INITIALIZATION ==============
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 bot_lock = Lock()
+cooldowns = {}
 
 # ============== PREDICTION FUNCTIONS ==============
 def generate_prediction():
@@ -78,14 +42,6 @@ def generate_prediction():
     return format_time(future_time), pred, safe
 
 # ============== TELEGRAM HANDLERS ==============
-def is_member(user_id):
-    try:
-        member = bot.get_chat_member(f"@{CHANNEL_USERNAME}", user_id)
-        return member.status in ["member", "administrator", "creator"]
-    except Exception as e:
-        print(f"Membership error: {e}")
-        return False
-
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     try:
@@ -115,7 +71,7 @@ def send_welcome(message):
 def handle_prediction(call):
     try:
         user_id = call.message.chat.id
-        if (remaining := get_cooldown(user_id)) > 0:
+        if user_id in cooldowns and (remaining := cooldowns[user_id] - time.time()) > 0:
             bot.answer_callback_query(call.id, f"Wait {int(remaining)}s", show_alert=True)
             return
 
@@ -125,7 +81,7 @@ def handle_prediction(call):
             f"📊 *Prediction*\n⏳ {future_time}\n📈 {round(pred+0.1,2)}x\n🛡 {safe}x",
             parse_mode="Markdown"
         )
-        set_cooldown(user_id)
+        cooldowns[user_id] = time.time() + COOLDOWN_SECONDS
         bot.answer_callback_query(call.id, "✅ Done!")
     except Exception as e:
         print(f"Prediction error: {e}")
@@ -135,20 +91,14 @@ def handle_prediction(call):
 def health_check():
     return "🤖 Bot Operational", 200
 
-@app.route('/status')
-def status():
-    return {
-        "status": "ok",
-        "redis": "connected" if r else "disconnected",
-        "users_in_cooldown": len(cooldowns) if not r else r.keys('cooldown:*')
-    }
-
 def run_flask():
+    """Run Flask web server"""
     if not is_port_in_use(PORT):
         app.run(host='0.0.0.0', port=PORT, threaded=True)
 
 # ============== BOT POLLING ==============
 def run_bot():
+    """Run bot with auto-restart"""
     print("🤖 Bot polling started")
     while True:
         try:
