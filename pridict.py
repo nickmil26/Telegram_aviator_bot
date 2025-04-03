@@ -158,26 +158,26 @@ def handle_prediction(call):
             "_Place bet 2 minutes before the specified time_"
         )
         
-        # Send the prediction
+        # Create markup for new message
+        markup = telebot.types.InlineKeyboardMarkup()
+        markup.add(
+            telebot.types.InlineKeyboardButton(
+                f"{ROCKET} GET NEW PREDICTION {ROCKET}", 
+                callback_data="get_prediction"
+            )
+        )
+        
+        # Send the prediction with button
         bot.send_message(
             user_id,
             prediction_msg,
+            reply_markup=markup,
             parse_mode="Markdown"
         )
         
         # Set cooldown
         cooldowns[user_id] = time.time() + COOLDOWN_SECONDS
         bot.answer_callback_query(call.id, "✅ Prediction generated!")
-        
-        # Update the original message
-        try:
-            bot.edit_message_reply_markup(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                reply_markup=None
-            )
-        except:
-            pass
             
     except Exception as e:
         print(f"Prediction error: {e}")
