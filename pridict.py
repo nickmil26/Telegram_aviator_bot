@@ -71,11 +71,11 @@ def send_welcome(message):
         user_id = message.chat.id
         
         welcome_msg = (
-            f"{GRAPH} *Welcome to AI-Powered Prediction Bot* {GRAPH}\n\n"
-            f"{CALENDAR} *Current Time:* {format_time(get_indian_time())} IST\n\n"
+            f"{GRAPH} *ᗯEᒪᑕOᗰE TO ᗩI-ᑭOᗯEᖇEᗪ ᑭᖇEᗪIᑕTIOᑎ ᗷOT* {GRAPH}\n\n"
+            
             "This bot generates high-probability predictions using "
             "advanced algorithms. For optimal results:\n"
-            f"{DIAMOND} Place bets 2 minutes before suggested time\n"
+            
             f"{DIAMOND} Use suggested assurance for risk management\n"
             f"{DIAMOND} Follow cooldown periods between predictions\n\n"
             f"{SHIELD} *VIP Channel:* @{CHANNEL_USERNAME}"
@@ -111,8 +111,8 @@ def send_welcome(message):
             
             bot.send_message(
                 user_id,
-                f"{CROSS} *Premium Access Required*\n\n"
-                "You must join our VIP channel to access predictions:\n"
+                f"{CROSS} *🅿🆁🅴🅼🅸🆄🅼 🅰🅲🅲🅴🆂🆂 🆁🅴🆀🆄🅸🆁🅴🅳*\n\n"
+                "\n You must join our VIP channel to access predictions:\n"
                 f"👉 @{CHANNEL_USERNAME}\n\n"
                 "After joining, click 'Verify Membership'",
                 reply_markup=markup,
@@ -175,7 +175,7 @@ def handle_prediction(call):
         prediction_msg = (
             f"{ROCKET} *LUCKY JET PREDICTION*\n"
             "┏━━━━━━━━━━━━━\n"
-            f"┠ {DIAMOND} 🕒 *TIME* : {future_time}\n"
+            f"┠ {DIAMOND} 🕒 𝐓𝐈𝐌𝐄 : {future_time}\n"
             f"┠\n"
             f"┠ {DIAMOND} 𝐂𝐎𝐄𝐅𝐅𝐈𝐂𝐈𝐄𝐍𝐓 : {pred}X {ROCKET}\n"
             f"┠\n"
