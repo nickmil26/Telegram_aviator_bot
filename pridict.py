@@ -4,6 +4,7 @@ import random
 import time
 import pytz
 from datetime import datetime, timedelta
+from flask import Flask
 
 # Configuration from environment variables
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -20,6 +21,9 @@ if not BOT_TOKEN:
 
 # Initialize bot
 bot = telebot.TeleBot(BOT_TOKEN)
+
+# Initialize Flask app
+app = Flask(__name__)
 
 # Store cooldown timers
 cooldowns = {}
@@ -57,6 +61,11 @@ def get_prediction_button():
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton("🎯 Get Prediction", callback_data="get_prediction"))
     return markup
+
+@app.route('/')
+def health_check():
+    """Simple health check endpoint."""
+    return "🤖 Telegram Prediction Bot is Running", 200
 
 @bot.message_handler(commands=["start", "help"])
 def send_welcome(message):
@@ -115,9 +124,18 @@ def handle_prediction(call):
         print(f"Prediction error: {e}")
         bot.answer_callback_query(call.id, "⚠️ Try again later")
 
-if __name__ == '__main__':
+def run_bot():
+    """Run the Telegram bot."""
     print("🚀 Bot running in IST timezone...")
     try:
         bot.infinity_polling()
     except Exception as e:
         print(f"Bot crashed: {e}")
+
+if __name__ == '__main__':
+    # Start bot in a separate thread
+    from threading import Thread
+    Thread(target=run_bot).start()
+    
+    # Run Flask app on port 10000
+    app.run(host='0.0.0.0', port=10000)
