@@ -16,6 +16,17 @@ PREDICTION_DELAY = 130
 PORT = int(os.environ.get('PORT', 10000))
 INDIAN_TIMEZONE = pytz.timezone('Asia/Kolkata')
 
+# Emojis for better visual appeal
+INDIAN_FLAG = "🇮🇳"
+CLOCK = "⏱"
+CHART = "📊"
+SHIELD = "🛡"
+MONEY = "💰"
+ROCKET = "🚀"
+CHECK = "✅"
+CROSS = "❌"
+LOCK = "🔒"
+
 # ================ UTILITY FUNCTIONS ================
 def is_port_in_use(port):
     """Check if port is available"""
@@ -26,7 +37,7 @@ def get_indian_time():
     return datetime.now(INDIAN_TIMEZONE)
 
 def format_time(dt):
-    return dt.strftime("%I:%M:%S %p")
+    return dt.strftime("%I:%M %p")
 
 def is_member(user_id):
     """Check channel membership"""
@@ -51,108 +62,125 @@ def generate_prediction():
     return format_time(future_time), pred, safe
 
 # ============== TELEGRAM HANDLERS ==============
-def create_keyboard():
-    """Creates a professional inline keyboard"""
-    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        telebot.types.InlineKeyboardButton(
-            "✨ Get Prediction", 
-            callback_data="get_prediction",
-            url=None  # Remove if you want pure callback
-        ),
-        telebot.types.InlineKeyboardButton(
-            "📊 My Stats", 
-            callback_data="user_stats"
-        )
-    )
-    return markup
-
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     try:
         user_id = message.chat.id
-        welcome_msg = (
-            "🌟 *Welcome to Crypto Predictions Pro* 🌟\n\n"
-            f"🕒 Current IST: {format_time(get_indian_time())}\n"
-            "🔮 Get accurate trading signals with our AI-powered engine\n\n"
-            "👉 *Tap below for your next prediction*"
-        )
+        current_time = format_time(get_indian_time())
         
         if is_member(user_id):
+            welcome_msg = (
+                f"{INDIAN_FLAG} *Sureshot Predictions*\n\n"
+                f"{CHECK} *VIP Access Granted*\n"
+                f"{CLOCK} Current IST: {current_time}\n\n"
+                "_Get accurate predictions with high winning probability_"
+            )
+            
+            markup = telebot.types.InlineKeyboardMarkup()
+            markup.add(
+                telebot.types.InlineKeyboardButton(
+                    f"{ROCKET} GET PREDICTION {ROCKET}", 
+                    callback_data="get_prediction"
+                )
+            )
+            
             bot.send_message(
                 user_id,
                 welcome_msg,
-                reply_markup=create_keyboard(),
-                parse_mode="MarkdownV2",
-                disable_web_page_preview=True
+                reply_markup=markup,
+                parse_mode="Markdown"
             )
         else:
+            markup = telebot.types.InlineKeyboardMarkup()
+            markup.add(
+                telebot.types.InlineKeyboardButton(
+                    "Join Channel", 
+                    url=f"https://t.me/{CHANNEL_USERNAME}"
+                ),
+                telebot.types.InlineKeyboardButton(
+                    "Check Membership", 
+                    callback_data="check_membership"
+                )
+            )
+            
             bot.send_message(
                 user_id,
-                "🔒 *Premium Access Required*\n\n"
-                f"Join @{CHANNEL_USERNAME} to unlock predictions\n\n"
-                "🛡️ Verified signals • 📈 85% accuracy",
-                parse_mode="MarkdownV2",
-                reply_markup=telebot.types.InlineKeyboardMarkup().add(
-                    telebot.types.InlineKeyboardButton(
-                        "Join Channel", 
-                        url=f"https://t.me/{CHANNEL_USERNAME}"
-                    )
-                )
+                f"{CROSS} *Access Denied*\n\n"
+                f"Join our VIP channel to get premium predictions:\n"
+                f"👉 @{CHANNEL_USERNAME}\n\n"
+                "_After joining, click 'Check Membership' below_",
+                reply_markup=markup,
+                parse_mode="Markdown"
             )
     except Exception as e:
         print(f"Welcome error: {e}")
+
+@bot.callback_query_handler(func=lambda call: call.data == "check_membership")
+def check_membership(call):
+    try:
+        user_id = call.message.chat.id
+        if is_member(user_id):
+            bot.answer_callback_query(call.id, "✅ Membership verified! Click below to get predictions")
+            send_welcome(call.message)
+        else:
+            bot.answer_callback_query(call.id, "❌ You haven't joined the channel yet!", show_alert=True)
+    except Exception as e:
+        print(f"Membership check error: {e}")
 
 @bot.callback_query_handler(func=lambda call: call.data == "get_prediction")
 def handle_prediction(call):
     try:
         user_id = call.message.chat.id
+        current_time = get_indian_time()
         
-        # Cooldown check
+        if not is_member(user_id):
+            bot.answer_callback_query(call.id, "❌ Join channel first!", show_alert=True)
+            return
+            
         if user_id in cooldowns and (remaining := cooldowns[user_id] - time.time()) > 0:
             mins, secs = divmod(int(remaining), 60)
             bot.answer_callback_query(
-                call.id,
-                f"⏳ Please wait {mins}m {secs}s",
+                call.id, 
+                f"{LOCK} Cooldown: {mins}m {secs}s remaining", 
                 show_alert=True
             )
             return
 
-        # Generate prediction
         future_time, pred, safe = generate_prediction()
         
+        # Format prediction message professionally
         prediction_msg = (
-            "🚀 *AI Prediction Generated*\n\n"
-            f"⏰ *Valid Until*: `{future_time}`\n"
-            f"📊 *Signal Strength*: `{round(pred + 0.10, 2)}x`\n"
-            f"🛡️ *Safe Zone*: `{safe}x`\n\n"
-            "_Updated every 2 minutes_"
+            f"{INDIAN_FLAG} *Premium Prediction*\n\n"
+            f"{CLOCK} *Bet Time:* {future_time} IST\n"
+            f"{CHART} *Coefficient:* {round(pred+0.1,2)}x\n"
+            f"{SHIELD} *Safe Cashout:* {safe}x\n"
+            f"{MONEY} *Potential Profit:* {round((pred+0.1)*10,2)}%\n\n"
+            "_Place bet 2 minutes before the specified time_"
         )
-
-        # Edit original message instead of sending new one
-        bot.edit_message_text(
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            text=prediction_msg,
-            parse_mode="MarkdownV2",
-            reply_markup=telebot.types.InlineKeyboardMarkup().add(
-                telebot.types.InlineKeyboardButton(
-                    "🔄 Refresh", 
-                    callback_data="get_prediction"
-                )
-            )
+        
+        # Send the prediction
+        bot.send_message(
+            user_id,
+            prediction_msg,
+            parse_mode="Markdown"
         )
         
         # Set cooldown
         cooldowns[user_id] = time.time() + COOLDOWN_SECONDS
+        bot.answer_callback_query(call.id, "✅ Prediction generated!")
         
+        # Update the original message
+        try:
+            bot.edit_message_reply_markup(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                reply_markup=None
+            )
+        except:
+            pass
+            
     except Exception as e:
         print(f"Prediction error: {e}")
-        bot.answer_callback_query(
-            call.id,
-            "⚠️ System busy. Try again shortly",
-            show_alert=True
-        )
 
 # ============== FLASK SERVER ==============
 @app.route('/')
@@ -179,7 +207,6 @@ def run_bot():
     while True:
         try:
             with bot_lock:
-                # REMOVED restart_on_change TO AVOID WATCHDOG DEPENDENCY
                 bot.infinity_polling(
                     long_polling_timeout=30,
                     timeout=20
