@@ -16,7 +16,7 @@ PREDICTION_DELAY = 130
 PORT = int(os.environ.get('PORT', 10000))
 INDIAN_TIMEZONE = pytz.timezone('Asia/Kolkata')
 
-# Emojis
+# Emojis and Stickers
 ROCKET = "🚀"
 LOCK = "🔒"
 CHECK = "✅"
@@ -27,6 +27,10 @@ CALENDAR = "📅"
 MONEY_BAG = "💰"
 GRAPH = "📈"
 SHIELD = "🛡️"
+ROCKET_STICKER_ID = "CAACAgUAAxkBAAEL3xRmEeX3xQABHYYYr4YH1LQhUe3VdW8AAp4LAAIWjvlVjXjWbJQN0k80BA"  # Replace with actual sticker ID
+
+# Track first-time users
+first_time_users = set()
 
 # ================ UTILITY FUNCTIONS ================
 def is_port_in_use(port):
@@ -157,13 +161,21 @@ def handle_prediction(call):
         except Exception as e:
             print(f"Button removal error: {e}")
 
+        # Send rocket sticker for first-time users
+        if user_id not in first_time_users:
+            try:
+                bot.send_sticker(user_id, ROCKET_STICKER_ID)
+                first_time_users.add(user_id)
+            except Exception as e:
+                print(f"Sticker sending error: {e}")
+
         # Generate and send prediction
         future_time, pred, safe = generate_prediction()
         
         prediction_msg = (
             f"{ROCKET} *LUCKY JET PREDICTION*\n"
             "┏━━━━━━━━━━━━━\n"
-            f"┠ {DIAMOND} 🕒 TIME : {future_time}\n"
+            f"┠ {DIAMOND} 🕒 *TIME* : {future_time}\n"
             f"┠\n"
             f"┠ {DIAMOND} 𝐂𝐎𝐄𝐅𝐅𝐈𝐂𝐈𝐄𝐍𝐓 : {pred}X {ROCKET}\n"
             f"┠\n"
